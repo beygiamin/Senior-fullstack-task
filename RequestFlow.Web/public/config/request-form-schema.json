@@ -1,0 +1,7 @@
+{
+  "fields": [
+    { "key": "title", "label": "عنوان", "type": "text", "required": true },
+    { "key": "amount", "label": "مبلغ (تومان)", "type": "number", "required": true },
+    { "key": "description", "label": "توضیحات", "type": "textarea", "required": false }
+  ]
+}

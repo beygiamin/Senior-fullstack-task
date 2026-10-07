@@ -1,5 +1,4 @@
 using RequestFlow.Api.Data;
-using RequestFlow.Api.Models;
 
 namespace RequestFlow.Api.Repositories;
 
@@ -10,10 +9,9 @@ public class UnitOfWork : IUnitOfWork
     public UnitOfWork(ApplicationDbContext context)
     {
         _context = context;
-        Requests = new Repository<RequestEntity>(_context);
     }
 
-    public IRepository<RequestEntity> Requests { get; }
+    public IRepository<T> Repository<T>() where T : class => new Repository<T>(_context);
 
     public Task<int> SaveChangesAsync() => _context.SaveChangesAsync();
 }

@@ -12,21 +12,14 @@ namespace RequestFlow.Api.Controllers;
 [ApiController]
 [Route("api/[controller]")]
 [Authorize]
-public class RequestsController : ControllerBase
+public class RequestsController(
+    IUnitOfWork unitOfWork,
+    UserManager<ApplicationUser> userManager,
+    RequestRoutingService requestRoutingService) : ControllerBase
 {
-    private readonly IUnitOfWork _unitOfWork;
-    private readonly UserManager<ApplicationUser> _userManager;
-    private readonly RequestRoutingService _requestRoutingService;
-
-    public RequestsController(
-        IUnitOfWork unitOfWork,
-        UserManager<ApplicationUser> userManager,
-        RequestRoutingService requestRoutingService)
-    {
-        _unitOfWork = unitOfWork;
-        _userManager = userManager;
-        _requestRoutingService = requestRoutingService;
-    }
+    private readonly IUnitOfWork _unitOfWork = unitOfWork;
+    private readonly UserManager<ApplicationUser> _userManager = userManager;
+    private readonly RequestRoutingService _requestRoutingService = requestRoutingService;
 
     [Authorize(Roles = RoleNames.Employee)]
     [HttpPost]
@@ -60,7 +53,7 @@ public class RequestsController : ControllerBase
             CreatedAt = DateTime.UtcNow
         };
 
-        _unitOfWork.Requests.Add(entity);
+        _unitOfWork.Repository<RequestEntity>().Add(entity);
         await _unitOfWork.SaveChangesAsync();
 
         return Ok(MapToResponse(entity));
@@ -76,7 +69,7 @@ public class RequestsController : ControllerBase
         }
 
         var roles = await _userManager.GetRolesAsync(user);
-        var requests = (await _unitOfWork.Requests.GetAllAsync())
+        var requests = (await _unitOfWork.Repository<RequestEntity>().GetAllAsync())
             .Cast<RequestEntity>()
             .Where(x => x.CreatedByUserId == user.Id || roles.Contains(x.AssignedRole, StringComparer.OrdinalIgnoreCase))
             .OrderByDescending(x => x.CreatedAt)
@@ -88,7 +81,7 @@ public class RequestsController : ControllerBase
     [HttpPut("{id:guid}/review")]
     public async Task<ActionResult<RequestListItem>> Review(Guid id, [FromBody] ReviewRequestRequest request)
     {
-        var entity = await _unitOfWork.Requests.GetByIdAsync(id);
+        var entity = await _unitOfWork.Repository<RequestEntity>().GetByIdAsync(id);
         if (entity is null)
         {
             return NotFound();
@@ -124,7 +117,7 @@ public class RequestsController : ControllerBase
             _ => throw new InvalidOperationException("Unsupported review decision.")
         };
 
-        _unitOfWork.Requests.Update(entity);
+        _unitOfWork.Repository<RequestEntity>().Update(entity);
         await _unitOfWork.SaveChangesAsync();
 
         return Ok(MapToResponse(entity));

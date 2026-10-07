@@ -1,12 +1,9 @@
-using System.IdentityModel.Tokens.Jwt;
-using System.Security.Claims;
-using System.Text;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.IdentityModel.Tokens;
 using RequestFlow.Api.Contracts;
 using RequestFlow.Api.Models;
+using RequestFlow.Api.Services;
 
 namespace RequestFlow.Api.Controllers;
 
@@ -15,21 +12,21 @@ namespace RequestFlow.Api.Controllers;
 public class AuthController : ControllerBase
 {
     private readonly UserManager<ApplicationUser> _userManager;
-    private readonly IConfiguration _configuration;
+    private readonly ITokenService _tokenService;
 
-    public AuthController(UserManager<ApplicationUser> userManager, IConfiguration configuration)
+    public AuthController(UserManager<ApplicationUser> userManager, ITokenService tokenService)
     {
         _userManager = userManager;
-        _configuration = configuration;
+        _tokenService = tokenService;
     }
 
     [AllowAnonymous]
     [HttpPost("register")]
     public async Task<ActionResult<AuthResponse>> Register([FromBody] RegisterRequest request)
     {
-        if (string.IsNullOrWhiteSpace(request.Email) || string.IsNullOrWhiteSpace(request.Password))
+        if (string.IsNullOrWhiteSpace(request.UserName) || string.IsNullOrWhiteSpace(request.Password))
         {
-            return BadRequest("Email and password are required.");
+            return BadRequest("Username and password are required.");
         }
 
         var role = request.Role.Trim();
@@ -39,16 +36,14 @@ public class AuthController : ControllerBase
             return BadRequest("Role must be Employee, Manager, or Finance.");
         }
 
-        if (await _userManager.FindByEmailAsync(request.Email) is not null)
+        if (await _userManager.FindByNameAsync(request.UserName) is not null)
         {
-            return Conflict("A user with this email already exists.");
+            return Conflict("A user with this username already exists.");
         }
 
         var user = new ApplicationUser
         {
-            UserName = request.Email,
-            Email = request.Email,
-            EmailConfirmed = true
+            UserName = request.UserName
         };
 
         var result = await _userManager.CreateAsync(user, request.Password);
@@ -59,12 +54,12 @@ public class AuthController : ControllerBase
 
         await _userManager.AddToRoleAsync(user, role);
 
-        var token = GenerateToken(user, await _userManager.GetRolesAsync(user));
+        var token = _tokenService.CreateAccessToken(user, await _userManager.GetRolesAsync(user));
         return Ok(new AuthResponse
         {
             Token = token,
             UserId = user.Id,
-            Email = user.Email ?? string.Empty,
+            UserName = user.UserName,
             Roles = (await _userManager.GetRolesAsync(user)).ToList()
         });
     }
@@ -73,53 +68,25 @@ public class AuthController : ControllerBase
     [HttpPost("login")]
     public async Task<ActionResult<AuthResponse>> Login([FromBody] LoginRequest request)
     {
-        if (string.IsNullOrWhiteSpace(request.Email) || string.IsNullOrWhiteSpace(request.Password))
+        if (string.IsNullOrWhiteSpace(request.UserName) || string.IsNullOrWhiteSpace(request.Password))
         {
-            return BadRequest("Email and password are required.");
+            return BadRequest("Username and password are required.");
         }
 
-        var user = await _userManager.FindByEmailAsync(request.Email);
+        var user = await _userManager.FindByNameAsync(request.UserName);
         if (user is null || !await _userManager.CheckPasswordAsync(user, request.Password))
         {
             return Unauthorized();
         }
 
         var roles = await _userManager.GetRolesAsync(user);
-        var token = GenerateToken(user, roles);
+        var token = _tokenService.CreateAccessToken(user, roles);
         return Ok(new AuthResponse
         {
             Token = token,
             UserId = user.Id,
-            Email = user.Email ?? string.Empty,
+            UserName = user.UserName,
             Roles = roles.ToList()
         });
-    }
-
-    private string GenerateToken(ApplicationUser user, IEnumerable<string> roles)
-    {
-        var jwtKey = _configuration["Jwt:Key"] ?? "ThisIsAReallyStrongKeyForJwtSigning123!";
-        var issuer = _configuration["Jwt:Issuer"] ?? "RequestFlow.Api";
-        var audience = _configuration["Jwt:Audience"] ?? "RequestFlow.Client";
-
-        var claims = new List<Claim>
-        {
-            new(ClaimTypes.NameIdentifier, user.Id),
-            new(ClaimTypes.Name, user.Email ?? string.Empty),
-            new(ClaimTypes.Email, user.Email ?? string.Empty)
-        };
-
-        claims.AddRange(roles.Select(role => new Claim(ClaimTypes.Role, role)));
-
-        var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey));
-        var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
-
-        var token = new JwtSecurityToken(
-            issuer: issuer,
-            audience: audience,
-            claims: claims,
-            expires: DateTime.UtcNow.AddHours(6),
-            signingCredentials: credentials);
-
-        return new JwtSecurityTokenHandler().WriteToken(token);
     }
 }

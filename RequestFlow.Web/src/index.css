@@ -1,0 +1,36 @@
+:root {
+  font-family: Manrope, 'Segoe UI', sans-serif;
+  color: #f8fafc;
+  background: #0c1017;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+
+  font-optical-sizing: auto;
+  font-weight: 400;
+  color-scheme: dark;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  min-width: 320px;
+  min-height: 100vh;
+  margin: 0;
+  background: #0c1017;
+}
+
+button,
+input,
+select,
+textarea {
+  color-scheme: dark;
+}
+
+button:focus-visible {
+  outline: 2px solid #7bd0ff;
+  outline-offset: 2px;
+}

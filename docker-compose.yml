@@ -1,0 +1,19 @@
+services:
+  postgres:
+    image: postgres:18
+    container_name: requestflow-postgres
+    restart: unless-stopped
+
+    environment:
+      POSTGRES_USER: requestflow
+      POSTGRES_PASSWORD: requestflow_dev_password
+      POSTGRES_DB: requestflow
+
+    ports:
+      - "5432:5432"
+
+    volumes:
+      - requestflow_postgres_data:/var/lib/postgresql
+
+volumes:
+  requestflow_postgres_data:

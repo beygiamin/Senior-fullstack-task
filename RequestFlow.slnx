@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="RequestFlow.Api/RequestFlow.Api.csproj" />
+  <Project Path="RequestFlow.Tests/RequestFlow.Tests.csproj" />
+</Solution>

@@ -53,7 +53,7 @@ function RequestStatusBadge({ status }: { status: RequestItem['status'] }) {
 export function RequestsPage() {
   const { roleLabels } = useAppConfig();
   const { user } = useAuth();
-  const { data = [], isPending, isError, error } = useRequests();
+  const { data = [], isPending, isError, error, refetch } = useRequests();
   const reviewMutation = useReviewRequest();
   const [pendingReviewId, setPendingReviewId] = useState<string | null>(null);
   const [rejectingRequestId, setRejectingRequestId] = useState<string | null>(null);
@@ -102,10 +102,20 @@ export function RequestsPage() {
             ))}
           </div>
         ) : isError ? (
-          <Alert variant="destructive">
-            <AlertTitle>بارگذاری درخواست‌ها ناموفق بود</AlertTitle>
-            <AlertDescription>{getErrorMessage(error)}</AlertDescription>
-          </Alert>
+          <>
+            <Alert variant="destructive">
+              <AlertTitle>بارگذاری درخواست‌ها ناموفق بود</AlertTitle>
+              <AlertDescription>{getErrorMessage(error)}</AlertDescription>
+            </Alert>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => void refetch()}
+              disabled={isPending}
+            >
+              تلاش دوباره
+            </Button>
+          </>
         ) : data.length === 0 ? (
           <Empty className="border border-dashed border-border">
             <EmptyHeader>

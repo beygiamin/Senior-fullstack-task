@@ -22,6 +22,48 @@ VITE_API_BASE_URL=http://localhost:5001/api
 
 If not provided, the app falls back to `http://localhost:5001/api`.
 
+## API routing configuration
+
+The API loads its `.env` file from the working directory or `RequestFlow.Api` folder. Set `RequestRouting__ManagerThreshold` in `RequestFlow.Api/.env` to configure the maximum request amount routed to a Manager (for example, `RequestRouting__ManagerThreshold=1000000`). The value must be greater than zero. The API environment template is in `RequestFlow.Api/.env.example`.
+
+## Backend setup and running
+
+The backend is an ASP.NET Core API targeting .NET 10. It uses PostgreSQL for persistence, Entity Framework Core for data access, ASP.NET Core Identity for user and role management, and JWT bearer tokens for authentication.
+
+1. Install the .NET 10 SDK and Docker with Docker Compose.
+2. Start PostgreSQL from the repository root:
+
+   ```bash
+   docker compose up -d
+   ```
+
+3. Create `RequestFlow.Api/.env` from `RequestFlow.Api/.env.example`. Set `ConnectionStrings__DefaultConnection` to a PostgreSQL connection string matching the credentials in `docker-compose.yml` (the local database uses `requestflow` / `requestflow_dev_password`). Set `Jwt__Key` to a long, randomly generated signing key. Adjust `RequestRouting__ManagerThreshold` if needed.
+4. Start the API from the repository root:
+
+   ```bash
+   dotnet run --project RequestFlow.Api --urls http://localhost:5001
+   ```
+
+   On startup, the API applies pending EF Core migrations and seeds the Employee, Manager, and Finance roles. The API is then available at `http://localhost:5001`, matching the frontend's default API URL. Stop it with `Ctrl+C`.
+
+## Backend architecture and design patterns
+
+The backend is organized by responsibility within `RequestFlow.Api`:
+
+- `Controllers` — ASP.NET Core API endpoints for authentication and request workflows. Controllers handle HTTP concerns and delegate business operations to services and data access abstractions.
+- `Services` — application logic for request routing, JWT creation, and role seeding.
+- `Repositories` — generic data access through `IRepository<T>` and `Repository<T>`, with `IUnitOfWork` and `UnitOfWork` coordinating access and persistence through a shared EF Core `DbContext`.
+- `Data` — the EF Core `ApplicationDbContext`, Identity persistence, and request entity mapping.
+- `Models`, `Contracts`, and `Options` — domain and Identity models, API request/response DTOs, and strongly typed configuration.
+
+The main patterns and architectural practices are:
+
+- **Layered architecture:** separates HTTP handling, application services, persistence, and data models.
+- **Repository and Unit of Work patterns:** encapsulate EF Core data access and save changes through a shared context.
+- **Dependency Injection:** ASP.NET Core registers services and data access abstractions and supplies them to controllers and other consumers.
+- **Options pattern:** binds `RequestRouting__ManagerThreshold` to typed routing options and validates that it is greater than zero.
+- **Role-based Authorization:** JWT claims and ASP.NET Core authorization attributes enforce access rules; the API remains authoritative even when the frontend hides unavailable actions.
+
 ## Architecture
 
 The frontend follows a feature-oriented structure:
